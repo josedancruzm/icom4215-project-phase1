@@ -1,21 +1,39 @@
+//for test-benching
 //iverilog -o test tb_rf_rh.v F1_Cruz_Melendez_Jose_register.v
 //vvp test
-// Register File Components
-// --built using binary decoders, multiplexers, and registers
 
-//we build our register, which will be 32 of them
+
+
+// ----------- INTERNAL REGISTER HANDLER SETUP ----------- //
+
+
+/*
+Below is our register, which will be 32 of them.
+Each register has an input line for the CLK and Load Enable (LE).
+Also, it has a 32-bit data input line (d) and a 32-bit output line (q). 
+*/
 module reg32 (
-    input  wire        clk, //our clock line
-    input  wire        ld,  //our load enable
-    input  wire [31:0] d,   //our 32-bit data input from the PW bus
-    output reg  [31:0] q    //our 32-bit stored value, which is the value that goes to the mux's
+    input  wire        clk,
+    input  wire        ld,
+    input  wire [31:0] d,
+    output reg  [31:0] q
 );
-    always @(posedge clk) begin
-        if (ld)
+
+    /*
+    On the rising edge of the clock, if LE is high, the register will load the value on d and output it on q. 
+    If LE is low, the register will hold its value.
+    */
+    always @(posedge clk) begin // Only execute the following block if CLK = 1
+        if (ld)                 // If LD is high, Q output will be equal to D input
             q <= d;
     end
 endmodule
 
+
+/*
+Below is our binary decoder (5-to-32), as stated by the instructions.
+It has a 5-bit input line (a), an enable line (en), and a 32-bit output line (y). 
+*/
 module dec5to32 (
     input  wire [4:0] a,
     input  wire       en,
@@ -31,8 +49,11 @@ module dec5to32 (
     end
 endmodule
 
-
-module mux32_1_32 (
+/*
+Below is our MUX (32-to-1), as stated by the instructions.
+It has 32, 32-bit input lines (d0-d31), a 5-bit select line (sel), and a 32-bit output line (y). 
+*/
+module mux32to1 (
     input  wire [31:0] d0,  input wire [31:0] d1,
     input  wire [31:0] d2,  input wire [31:0] d3,
     input  wire [31:0] d4,  input wire [31:0] d5,
@@ -91,6 +112,15 @@ module mux32_1_32 (
     end
 endmodule
 
+
+
+// ----------- OVERALL REGISTER FILE SETUP ----------- //
+
+/*
+Below is our overall Register File, as stated by the instructions.
+It has an input line for clk, LE, 32-bit PW, 5-bit RW, 5-bit RNA, 5-bit RNB, and a 5-bit RNS.
+It also has an output line for 32-bit PA, 32-bit PB, and 32-bit PS.
+*/
 module reg_file (
     input  wire        clk,
     input  wire        LE,
@@ -126,7 +156,7 @@ module reg_file (
         end
     endgenerate
 
-    mux32_1_32 muxA (
+    mux32to1 muxA (
         q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7],
         q[8], q[9], q[10], q[11], q[12], q[13], q[14], q[15],
         q[16], q[17], q[18], q[19], q[20], q[21], q[22], q[23],
@@ -134,7 +164,7 @@ module reg_file (
         RNA, PA
     );
 
-    mux32_1_32 muxB (
+    mux32to1 muxB (
         q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7],
         q[8], q[9], q[10], q[11], q[12], q[13], q[14], q[15],
         q[16], q[17], q[18], q[19], q[20], q[21], q[22], q[23],
@@ -142,7 +172,7 @@ module reg_file (
         RNB, PB
     );
 
-    mux32_1_32 muxS (
+    mux32to1 muxS (
         q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7],
         q[8], q[9], q[10], q[11], q[12], q[13], q[14], q[15],
         q[16], q[17], q[18], q[19], q[20], q[21], q[22], q[23],

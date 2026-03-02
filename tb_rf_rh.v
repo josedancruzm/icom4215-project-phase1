@@ -48,12 +48,10 @@ initial begin
     RTD  = 1;
 
     // Print header
-    $display("time | RW I[11:15] I[16:20] I[6:10] PW PA PB PS RD");
-
+    $display("time | RW | RA | RB | RS | PW | PA | PB | PS | RD");
     // Monitor changes
-    $monitor("%4t | %2d   %2d       %2d       %2d    %2d  %d %d %d %d",
-             $time, RW, I[15:11], I[20:16], I[10:6], PW, PA, PB, PS, RD);
-
+    $monitor("%4t | %2d | %2d | %2d | %2d | %2d | %2d | %2d | %2d | %2d", 
+            $time, RW, I[15:11], I[20:16], I[10:6], PW, PA, PB, PS, RD);
     // Step 2: write values into registers
     repeat (32) begin
         #4;
