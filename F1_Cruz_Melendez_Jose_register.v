@@ -4,7 +4,7 @@
 
 
 
-// ----------- INTERNAL REGISTER HANDLER SETUP ----------- //
+// ----------- INTERNAL REGISTER FILE SETUP ----------- //
 
 
 /*
@@ -12,7 +12,6 @@ Below is our register, which will be 32 of them.
 Each register has an input line for the CLK and Load Enable (LE).
 Also, it has a 32-bit data input line (d) and a 32-bit output line (q). 
 */
-//100% correct
 module reg32 (
     input  wire        clk,
     input  wire        ld,
@@ -41,6 +40,9 @@ module dec5to32 (
     input  wire       en,
     output reg  [31:0] y
 );
+    /*
+    Always execute theres a change in signal.
+    */
     always @(*) begin
         if (!en)
             y = 32'b0;
@@ -75,6 +77,9 @@ module mux32to1 (
     input  wire [4:0]  sel,
     output reg  [31:0] y
 );
+    /*
+    Compares every sel case with each possible value.
+    */
     always @(*) begin
         case (sel)
             5'd0:  y = d0;
@@ -146,6 +151,7 @@ module reg_file (
         .y (ld)
     );
 
+    // Generate 32 registers using a for loop, and connect them to the decoder and MUXes.
     genvar i;
     generate
         for (i = 0; i < 32; i = i + 1) begin : RF_REGS
@@ -163,7 +169,7 @@ module reg_file (
         q[8], q[9], q[10], q[11], q[12], q[13], q[14], q[15],
         q[16], q[17], q[18], q[19], q[20], q[21], q[22], q[23],
         q[24], q[25], q[26], q[27], q[28], q[29], q[30], q[31],
-        RNA, PA
+        RNA, PA // Selects the register to output on PA based on RNA
     );
 
     mux32to1 muxB (
@@ -183,6 +189,8 @@ module reg_file (
     );
 
 endmodule
+
+// ----------- OVERALL REGISTER HANDLER SETUP ----------- //
 
 module reg_handler (
     input  wire [31:0] I,
@@ -209,6 +217,7 @@ endmodule
 
 module tb_rf_rh;
 
+// Signals we'll be controlling in the testbench
 reg         clk;
 reg         LE;
 reg  [4:0]  RW;
@@ -221,11 +230,12 @@ reg         RTD;
 wire [31:0] PA, PB, PS;
 wire [4:0]  RD;
 
+    //We instantiate the reg_handler and reg_file modules, and connect them together.
 reg_handler RH (
     .I(I),
     .RSO1(RSO1),
     .RTD(RTD),
-    .RNA(),   // we don’t need to name these wires
+    .RNA(),
     .RNB(),
     .RNS(),
     .RD(RD)
@@ -244,17 +254,19 @@ reg_file RF (
     .PS(PS)
 );
 
+// Generate our clock signal, which will toggle every 2 time units.
 initial clk = 0;
 always #2 clk = ~clk;
 
+//Conditions at time = 0.
 initial begin
-    // Step 1: initialize
     LE   = 1;
     PW   = 30;
     RW   = 0;
     I    = 32'b0;
     RSO1 = 0;
     RTD  = 1;
+
     I[15:11] = 0;
     I[20:16] = 31;
     I[10:6]  = 30;
@@ -264,7 +276,8 @@ initial begin
     // Monitor changes
     $monitor("%4t | %2d | %2d | %2d | %2d | %2d | %2d | %2d | %2d | %2d", 
             $time, RW, I[15:11], I[20:16], I[10:6], PW, PA, PB, PS, RD);
-    // Step 2: write values into registers
+    
+    // Write values into registers.
     repeat (32) begin
         #4;
         PW = PW + 1;
@@ -274,7 +287,7 @@ initial begin
         I[10:6]  = I[10:6]  + 1;
     end
 
-    // Step 3: switch to read mode
+    // Switch to reading mode, and read values from registers.
     LE   = 0;
     PW   = 55;
     RW   = 0;
@@ -285,6 +298,7 @@ initial begin
     I[20:16] = 31;
     I[10:6]  = 30;
 
+    // Repeat the process of reading values from registers, but with different control signals.
     repeat (5) begin
         #4;
         I[15:11] = I[15:11] + 1;
