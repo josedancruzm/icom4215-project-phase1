@@ -1,5 +1,5 @@
 //for test-benching
-//iverilog -o test tb_rf_rh.v F1_Cruz_Melendez_Jose_register.v
+//iverilog -o test F1_Cruz_Melendez_Jose_register.v
 //vvp test
 
 
@@ -12,6 +12,7 @@ Below is our register, which will be 32 of them.
 Each register has an input line for the CLK and Load Enable (LE).
 Also, it has a 32-bit data input line (d) and a 32-bit output line (q). 
 */
+//100% correct
 module reg32 (
     input  wire        clk,
     input  wire        ld,
@@ -24,7 +25,7 @@ module reg32 (
     If LE is low, the register will hold its value.
     */
     always @(posedge clk) begin // Only execute the following block if CLK = 1
-        if (ld)                 // If LD is high, Q output will be equal to D input
+        if (ld)                 // If LE is high, Q output will be equal to D input
             q <= d;
     end
 endmodule
@@ -34,6 +35,7 @@ endmodule
 Below is our binary decoder (5-to-32), as stated by the instructions.
 It has a 5-bit input line (a), an enable line (en), and a 32-bit output line (y). 
 */
+
 module dec5to32 (
     input  wire [4:0] a,
     input  wire       en,
@@ -202,4 +204,94 @@ module reg_handler (
     assign RNA = (RSO1) ? field_RT_RS : field_RA;
     assign RD  = (RTD)  ? field_RT_RS : field_RA;
 
+endmodule
+
+
+module tb_rf_rh;
+
+reg         clk;
+reg         LE;
+reg  [4:0]  RW;
+reg  [31:0] PW;
+
+reg  [31:0] I;
+reg         RSO1;
+reg         RTD;
+
+wire [31:0] PA, PB, PS;
+wire [4:0]  RD;
+
+reg_handler RH (
+    .I(I),
+    .RSO1(RSO1),
+    .RTD(RTD),
+    .RNA(),   // we don’t need to name these wires
+    .RNB(),
+    .RNS(),
+    .RD(RD)
+);
+
+reg_file RF (
+    .clk(clk),
+    .LE(LE),
+    .RW(RW),
+    .PW(PW),
+    .RNA(RH.RNA),
+    .RNB(RH.RNB),
+    .RNS(RH.RNS),
+    .PA(PA),
+    .PB(PB),
+    .PS(PS)
+);
+
+initial clk = 0;
+always #2 clk = ~clk;
+
+initial begin
+    // Step 1: initialize
+    LE   = 1;
+    PW   = 30;
+    RW   = 0;
+    I    = 32'b0;
+    RSO1 = 0;
+    RTD  = 1;
+    I[15:11] = 0;
+    I[20:16] = 31;
+    I[10:6]  = 30;
+
+    // Print header
+    $display("time | RW | RA | RB | RS | PW | PA | PB | PS | RD");
+    // Monitor changes
+    $monitor("%4t | %2d | %2d | %2d | %2d | %2d | %2d | %2d | %2d | %2d", 
+            $time, RW, I[15:11], I[20:16], I[10:6], PW, PA, PB, PS, RD);
+    // Step 2: write values into registers
+    repeat (32) begin
+        #4;
+        PW = PW + 1;
+        RW = RW + 1;
+        I[15:11] = I[15:11] + 1;
+        I[20:16] = I[20:16] + 1;
+        I[10:6]  = I[10:6]  + 1;
+    end
+
+    // Step 3: switch to read mode
+    LE   = 0;
+    PW   = 55;
+    RW   = 0;
+    I    = 32'b0;
+    RSO1 = 1;
+    RTD  = 0;
+    I[15:11] = 0;
+    I[20:16] = 31;
+    I[10:6]  = 30;
+
+    repeat (5) begin
+        #4;
+        I[15:11] = I[15:11] + 1;
+        I[20:16] = I[20:16] + 1;
+        I[10:6]  = I[10:6]  + 1;
+    end
+
+    #10 $finish;
+end
 endmodule
